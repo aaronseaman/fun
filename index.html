@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Navos Ninja</title>
+  <meta name="description" content="Navos Ninja — a five-minute top-down survival roguelite. Weapons fire automatically; move, dodge, collect XP and evolve your gear.">
+  <meta name="theme-color" content="#1c2a18">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23c9b48b'/%3E%3Crect x='26' y='14' width='12' height='36' rx='2' fill='%23178089'/%3E%3Crect x='14' y='26' width='36' height='12' rx='2' fill='%23178089'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Navos Ninja game"></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+
+  <div id="ui">
+    <!-- TITLE -->
+    <section id="screen-title" class="screen">
+      <header class="title-block">
+        <div class="kicker">A five-minute survival roguelite</div>
+        <h1 class="logo"><span class="logo-a">NAVOS</span><span class="logo-b">NINJA</span></h1>
+        <p class="tagline">One healthcare hero. A swarm of very silly monsters. Survive the shift.</p>
+      </header>
+      <div class="title-spacer" aria-hidden="true"></div>
+      <div class="title-panel">
+        <button id="btn-start" class="btn btn-primary btn-big">Start Shift</button>
+        <ul class="info">
+          <li><b>Survive 5:00.</b> A miniboss arrives at 2:30 and the final boss at 4:30.</li>
+          <li><b>Weapons attack automatically.</b> Your job is to move, dodge and grab XP gems.</li>
+          <li><b>Level up</b> to pick 1 of 3 upgrades. Max a weapon (Lv 5) to unlock its evolution.</li>
+        </ul>
+        <div class="controls">
+          <span><kbd>WASD</kbd> / <kbd>Arrows</kbd> Move</span>
+          <span><kbd>Space</kbd> Dash</span>
+          <span><kbd>Esc</kbd> Pause</span>
+          <span><kbd>M</kbd> Sound</span>
+          <span class="touch-only">Touch: drag to move, tap DASH</span>
+        </div>
+        <button class="btn btn-ghost sound-toggle" data-sound type="button">Sound: Off</button>
+      </div>
+    </section>
+
+    <!-- LEVEL UP -->
+    <section id="screen-levelup" class="screen hidden">
+      <div class="levelup-head">
+        <div class="rays" aria-hidden="true"></div>
+        <h2>LEVEL UP!</h2>
+        <p id="levelup-sub">Choose one upgrade</p>
+      </div>
+      <div id="cards" class="cards"></div>
+      <p class="hint">Click a card or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>
+    </section>
+
+    <!-- PAUSE -->
+    <section id="screen-pause" class="screen hidden">
+      <div class="panel">
+        <h2>Paused</h2>
+        <div id="pause-build" class="build"></div>
+        <div class="btn-col">
+          <button id="btn-resume" class="btn btn-primary" type="button">Resume</button>
+          <button id="btn-restart" class="btn" type="button">Restart</button>
+          <button id="btn-title" class="btn" type="button">Return to Title</button>
+          <button class="btn btn-ghost sound-toggle" data-sound type="button">Sound: Off</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="screen-results" class="screen hidden">
+      <div class="panel results">
+        <h2 id="results-title">Victory</h2>
+        <p id="results-sub" class="results-sub"></p>
+        <dl id="results-stats" class="stats"></dl>
+        <div id="results-build" class="build"></div>
+        <div class="btn-row">
+          <button id="btn-again" class="btn btn-primary" type="button">Play Again</button>
+          <button id="btn-results-title" class="btn" type="button">Title</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
