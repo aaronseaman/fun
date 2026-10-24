@@ -2,7 +2,7 @@
 
 A polished, top-down **five-minute survival roguelite** for the browser. You play a tanned healthcare hero in khaki medical scrubs, holding out against swarms of silly four-legged monsters. Your weapons attack on their own; your job is to move, dodge, collect XP and build a set of upgrades that evolve into something ridiculous.
 
-**Play:** https://aaronseaman.github.io/navos-ninja/
+**Play:** https://aaronseaman.github.io/fun/ (GitHub Pages, published from the `gh-pages` branch of [`aaronseaman/fun`](https://github.com/aaronseaman/fun/tree/gh-pages))
 
 Everything you see (the hero, the monsters, the arena, weapons, effects, icons and HUD) is drawn procedurally with Canvas 2D. There are no image, sprite or audio files, no dependencies and no build step.
 
@@ -77,7 +77,18 @@ Optional URL flags: `?debug` shows a small performance/entity overlay; `?test` e
 
 ## Deploy / GitHub Pages
 
-The site is served by GitHub Pages from the `main` branch root (legacy "deploy from a branch" mode). There is no build: pushing to `main` redeploys. The live game is at **https://aaronseaman.github.io/navos-ninja/**.
+The game is static files at the repository root, so any GitHub Pages "deploy from a branch" setup serves it as is. There is no build step.
+
+**Current deployment:** https://aaronseaman.github.io/fun/, served from the `gh-pages` branch of `aaronseaman/fun`. The same commit is also on that repo's `navos-ninja` branch. The intended home, a public `aaronseaman/navos-ninja` repo served from `main`, couldn't be created from the automated build session, whose GitHub integration lacks permission to create repositories or call the Pages API.
+
+To move it to its own repository:
+
+```sh
+gh repo create navos-ninja --public --source=. --remote=origin --push
+gh api repos/<owner>/navos-ninja/pages -X POST \
+  -f build_type=legacy -f 'source[branch]=main' -f 'source[path]=/'
+# the game is then served at https://<owner>.github.io/navos-ninja/
+```
 
 ## Technical architecture
 
@@ -140,6 +151,7 @@ Screens were also checked by eye from screenshots: title, gameplay at several st
 
 ## Known limitations
 
+- The live URL couldn't be fetched from the build environment, whose network policy blocks `github.io`. The deployment was confirmed through GitHub's API instead: the "pages build and deployment" run succeeded, and the `github-pages` deployment reports `success` at that URL.
 - Not tested with a real human player or on physical mobile hardware. Touch controls were tested only with synthetic pointer events.
 - Performance numbers come from headless Chromium. Very old or low-power devices may drop frames during the densest late-game swarms (the game reduces decorative particles first).
 - Balance was tuned with a bot. Human skill varies, so the final boss may feel easy for strong players or the mid-game hard for new ones.
