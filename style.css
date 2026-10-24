@@ -39,7 +39,9 @@ html, body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, rgba(6, 10, 6, 0) 48%, rgba(6, 10, 6, 0.55) 100%);
+  background:
+    radial-gradient(ellipse at center, rgba(6, 10, 6, 0) 48%, rgba(6, 10, 6, 0.55) 100%),
+    linear-gradient(135deg, rgba(255, 214, 150, 0.10) 0%, rgba(255, 214, 150, 0) 42%, rgba(30, 50, 90, 0) 62%, rgba(30, 50, 90, 0.16) 100%);
 }
 
 #ui { position: fixed; inset: 0; pointer-events: none; }

@@ -30,7 +30,7 @@ const CONFIG = {
   MAX_STEPS_PER_FRAME: 6,
   MAX_DPR: 2,
   MAX_CANVAS_PIXELS: 2560 * 1440,
-  VIEW_SHORT_SIDE: 820,       // world units visible across the shorter screen side
+  VIEW_SHORT_SIDE: 770,       // world units visible across the shorter screen side
   ZOOM_MIN: 0.55,
   ZOOM_MAX: 1.4,
   TITLE_ZOOM: 1.25,
@@ -919,9 +919,9 @@ function updateSpawner(dt) {
 const WEAPON_ORDER = ['strike', 'syringe', 'pulse', 'medallion'];
 const WEAPONS = {
   strike: {
-    name: 'Medical Strike', evoName: 'Rapid Response',
-    desc: 'Auto-slashes the nearest enemy with a bright arc.',
-    evoDesc: 'Blazing-fast, extra-wide strikes that hit much harder.',
+    name: 'Sword Strike', evoName: 'Rapid Response',
+    desc: 'Auto-slashes the nearest enemy with his katana.',
+    evoDesc: 'Blazing-fast, extra-wide katana sweeps that hit much harder.',
     update: updateStrike,
   },
   syringe: {
@@ -1011,7 +1011,7 @@ function updateStrike(w, dt) {
     const d = Math.sqrt(d2) || 0.01;
     if (d > e.r + p.r && Math.abs(angleDiff(Math.atan2(dy, dx), ang)) > half + Math.asin(Math.min(1, e.r / d))) continue;
     damageEnemy(e, s.dmg, dx / d, dy / d, s.kb);
-    hitSparks(e.x, e.y - e.r, w.evolved ? '#fff6b0' : '#b8fff0', w.evolved ? 6 : 4);
+    hitSparks(e.x, e.y - e.r, w.evolved ? '#fff6b0' : '#cdeeff', w.evolved ? 6 : 4);
     if (w.evolved) emit(PK.GLOW, e.x, e.y - e.r, 0, 0, 0.16, e.r * 1.6, '#fff1a8', 0);
   }
   sfx('strike');
@@ -1622,8 +1622,8 @@ const UI = {
     panel.classList.toggle('lose', !victory);
     $('results-title').textContent = victory ? 'Victory' : 'Defeat';
     $('results-sub').textContent = victory
-      ? (bossDefeated ? 'You defeated The Grand Gobbler. Shift complete!' : 'You survived the full shift — but the final boss was not defeated.')
-      : 'The swarm overwhelmed you. Patch up and try again.';
+      ? (bossDefeated ? 'You defeated The Grand Gobbler!' : 'You survived all five minutes — but the final boss was not defeated.')
+      : 'The swarm overwhelmed you. Sharpen up and try again.';
     const bossStatus = bossDefeated ? ['Defeated', 'good'] : G.bossSpawned ? ['Survived it', 'bad'] : ['Not reached', ''];
     const miniStatus = G.minibossDefeated ? ['Defeated', 'good'] : G.minibossSpawned ? ['Not defeated', 'bad'] : ['Not reached', ''];
     const rows = [
@@ -1686,15 +1686,12 @@ function drawIcon(c, key, size, evo) {
   c.strokeStyle = evo ? '#ffd166' : 'rgba(255,255,255,0.16)'; c.lineWidth = evo ? 2.5 : 1.5; c.stroke();
   switch (key) {
     case 'strike': {
-      c.beginPath();
-      c.arc(-4, 6, 22, -2.0, 0.35);
-      c.arc(-10, 12, 15, 0.35, -2.0, true);
-      c.closePath();
-      const g = c.createLinearGradient(-20, -16, 18, 14);
-      g.addColorStop(0, 'rgba(143,245,216,0.2)'); g.addColorStop(1, evo ? '#fff3a0' : '#8ff5d8');
-      c.fillStyle = g; c.fill();
-      c.beginPath(); c.arc(-4, 6, 21, -1.4, 0.3); c.strokeStyle = '#ffffff'; c.lineWidth = 2.5; c.stroke();
-      star4(c, 15, 12, 5, '#ffffff');
+      c.beginPath(); c.arc(-2, 4, 23, -2.3, 0.15);
+      c.strokeStyle = evo ? 'rgba(255,209,102,0.75)' : 'rgba(143,212,255,0.75)'; c.lineWidth = 5; c.stroke();
+      c.save(); c.translate(-13, 14); c.rotate(-0.85);
+      drawKatana(c, HERO_PAL, 0, 0, 0, 34, evo, 0.3, false);
+      c.restore();
+      star4(c, 13, -15, 5, '#ffffff');
       break;
     }
     case 'syringe':
@@ -1783,6 +1780,15 @@ function drawIcon(c, key, size, evo) {
     star4(c, -19, 15, 4, '#ffd166');
   }
   c.restore();
+}
+
+function shurikenPath(c, x, y, ro, ri) {
+  c.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU - Math.PI / 2, r = i % 2 ? ri : ro;
+    if (i) c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else c.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  c.closePath();
 }
 
 function star4(c, x, y, r, color) {
@@ -2174,7 +2180,7 @@ function startEnding(kind, bossDefeated) {
     }
     for (const pr of projectiles) pr.on = false;
     G.magnetAll = 3;
-    if (!bossDefeated) banner("TIME'S UP!", 'You survived the whole shift!', '#7cf0b0');
+    if (!bossDefeated) banner("TIME'S UP!", 'You survived all five minutes!', '#7cf0b0');
     sfx('victory');
   } else {
     banner('DOWN!', 'The swarm got you…', '#ff5d6c');
@@ -2293,6 +2299,19 @@ function paintGround(c, x0, y0, size, cx, cy) {
     c.beginPath(); c.arc(0, 0, R, 0, TAU); c.fillStyle = eg; c.fill();
   }
 
+  // Seamless world-anchored grain so the ground reads as earth and grass, not flat paint.
+  c.save();
+  c.globalCompositeOperation = 'overlay';
+  for (const [alpha, rot, scale] of [[0.26, 0, 1], [0.22, 0.52, 2.3]]) {
+    const pat = c.createPattern(SPRITES.grain, 'repeat');
+    if (rot && pat.setTransform && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().rotate(rot * 180 / Math.PI).scale(scale));
+    else if (rot) continue;
+    c.globalAlpha = alpha;
+    c.fillStyle = pat;
+    c.fillRect(x0, y0, size, size);
+  }
+  c.restore();
+
   const feats = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) feats.push(chunkFeatures(cx + dx, cy + dy));
   const each = (kind, fn) => {
@@ -2348,6 +2367,7 @@ function paintGround(c, x0, y0, size, cx, cy) {
   each('flower', (f, d) => {
     if (d < R + 30 && f.v > 0.3) return;
     if (onPlaza(d)) return;
+    if (f.v > 0.72) { drawMushrooms(c, f.x, f.y, f.v); return; }
     const col = ['#f2d16b', '#f0a3b5', '#ffffff', '#b9a2ff'][(f.v * 4) | 0];
     for (let i = 0; i < 4; i++) {
       const a = f.a + i * 1.7, rr = f.r * 0.6;
@@ -2356,6 +2376,10 @@ function paintGround(c, x0, y0, size, cx, cy) {
       c.beginPath(); c.arc(x, y, 0.9, 0, TAU); c.fillStyle = '#e9a23b'; c.fill();
     }
   });
+
+  for (const l of LANTERNS) {
+    if (l.x > x0 - 40 && l.x < x1 + 40 && l.y > y0 - 60 && l.y < y1 + 20) drawLantern(c, l.x, l.y);
+  }
 
   // Ring of boundary stones.
   if (nearest < R + 80) {
@@ -2407,11 +2431,61 @@ function drawPlaza(c) {
   eg.addColorStop(0, '#86a79d'); eg.addColorStop(1, '#5c7b72');
   c.beginPath(); c.arc(0, 0, 70, 0, TAU); c.fillStyle = eg; c.fill();
   c.lineWidth = 4; c.strokeStyle = '#4a5f58'; c.stroke();
-  c.fillStyle = '#e4dcc8';
-  c.fillRect(-14, -46, 28, 92); c.fillRect(-46, -14, 92, 28);
-  c.strokeStyle = 'rgba(80,70,50,0.35)'; c.lineWidth = 2;
-  c.strokeRect(-14, -46, 28, 92); c.strokeRect(-46, -14, 92, 28);
-  c.beginPath(); c.arc(0, 0, 58, 0, TAU); c.strokeStyle = 'rgba(228,220,200,0.35)'; c.lineWidth = 2; c.stroke();
+  shurikenPath(c, 2, 3, 50, 14); c.fillStyle = 'rgba(40,52,46,0.45)'; c.fill();
+  shurikenPath(c, 0, 0, 50, 14); c.fillStyle = '#e4dcc8'; c.fill();
+  c.strokeStyle = 'rgba(80,70,50,0.45)'; c.lineWidth = 2; c.stroke();
+  c.beginPath(); c.arc(0, 0, 9, 0, TAU); c.fillStyle = '#5c7b72'; c.fill(); c.stroke();
+  c.beginPath(); c.arc(0, 0, 60, 0, TAU); c.strokeStyle = 'rgba(228,220,200,0.35)'; c.lineWidth = 2; c.stroke();
+  // Weathering: hairline cracks across a few tiles.
+  const rng = mulberry32(99);
+  c.strokeStyle = 'rgba(50,40,28,0.35)'; c.lineWidth = 1.2;
+  for (let i = 0; i < 14; i++) {
+    const a = rng() * TAU, r0 = 80 + rng() * (PR - 100);
+    let x = Math.cos(a) * r0, y = Math.sin(a) * r0, d = rng() * TAU;
+    c.beginPath(); c.moveTo(x, y);
+    for (let k = 0; k < 3; k++) { d += (rng() - 0.5) * 1.6; x += Math.cos(d) * 9; y += Math.sin(d) * 9; c.lineTo(x, y); }
+    c.stroke();
+  }
+}
+
+// Four stone lanterns around the plaza; their flames glow at runtime.
+const LANTERNS = [0, 1, 2, 3].map((i) => {
+  const a = Math.PI / 4 + i * Math.PI / 2, r = CONFIG.PLAZA_RADIUS + 42;
+  return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+});
+
+function drawLantern(c, x, y) {
+  c.save();
+  c.translate(x, y);
+  c.beginPath(); c.ellipse(6, 3, 18, 7, 0, 0, TAU); c.fillStyle = 'rgba(24,14,4,0.35)'; c.fill();
+  const g = c.createLinearGradient(-14, 0, 14, 0);
+  g.addColorStop(0, '#b8ad97'); g.addColorStop(0.5, '#958a76'); g.addColorStop(1, '#6a604f');
+  const box = (x0, y0, w, h, r) => { roundRectPath(c, x0, y0, w, h, r); c.fillStyle = g; c.fill(); c.lineWidth = 1.6; c.strokeStyle = '#3d362c'; c.stroke(); };
+  box(-12, -7, 24, 7, 2);
+  box(-4.5, -26, 9, 20, 1.5);
+  box(-11, -30, 22, 5, 1.5);
+  box(-7.5, -43, 15, 14, 1.5);
+  roundRectPath(c, -4.2, -40, 8.4, 8, 1); c.fillStyle = '#ffcf6b'; c.fill();
+  c.fillStyle = '#ffeeb0'; c.fillRect(-1.6, -38.5, 3.2, 5);
+  c.beginPath(); c.moveTo(-16, -42); c.quadraticCurveTo(0, -48, 16, -42); c.lineTo(6, -51); c.lineTo(-6, -51); c.closePath();
+  c.fillStyle = g; c.fill(); c.lineWidth = 1.6; c.strokeStyle = '#3d362c'; c.stroke();
+  c.beginPath(); c.arc(0, -53.5, 3, 0, TAU); c.fillStyle = '#958a76'; c.fill(); c.stroke();
+  c.fillStyle = 'rgba(70,100,45,0.55)';
+  c.beginPath(); c.ellipse(-6, -45, 5, 2, 0.1, 0, TAU); c.ellipse(-8, -2, 4, 1.8, 0, 0, TAU); c.fill();
+  c.restore();
+}
+
+function drawMushrooms(c, x, y, v) {
+  const rng = mulberry32((v * 1e9) >>> 0);
+  for (let i = 0; i < 3; i++) {
+    const mx = x + (rng() - 0.5) * 16, my = y + (rng() - 0.5) * 8, s = 2.6 + rng() * 2.4;
+    c.beginPath(); c.ellipse(mx + 1, my + 1, s, s * 0.4, 0, 0, TAU); c.fillStyle = 'rgba(20,12,4,0.3)'; c.fill();
+    c.fillStyle = '#efe6d2'; c.fillRect(mx - s * 0.3, my - s * 1.4, s * 0.6, s * 1.4);
+    c.beginPath(); c.ellipse(mx, my - s * 1.4, s, s * 0.7, 0, Math.PI, 0); c.closePath();
+    c.fillStyle = v > 0.9 ? '#d9a441' : '#d8443c'; c.fill(); c.lineWidth = 0.8; c.strokeStyle = '#4a1a14'; c.stroke();
+    c.fillStyle = '#fff6e8';
+    c.beginPath(); c.arc(mx - s * 0.35, my - s * 1.75, s * 0.16, 0, TAU); c.arc(mx + s * 0.3, my - s * 1.6, s * 0.12, 0, TAU); c.fill();
+  }
 }
 
 function drawStone(c, x, y, r, a) {
@@ -2421,6 +2495,9 @@ function drawStone(c, x, y, r, a) {
   c.beginPath(); c.ellipse(0, 0, r, r * 0.72, 0, 0, TAU); c.fillStyle = GROUND.stoneDark; c.fill();
   c.beginPath(); c.ellipse(-r * 0.08, -r * 0.1, r * 0.88, r * 0.58, 0, 0, TAU); c.fillStyle = GROUND.stone; c.fill();
   c.beginPath(); c.ellipse(-r * 0.3, -r * 0.28, r * 0.42, r * 0.24, -0.3, 0, TAU); c.fillStyle = GROUND.stoneLight; c.fill();
+  if (r > 6 && ((r * 97) | 0) % 3 === 0) {
+    c.beginPath(); c.ellipse(r * 0.15, -r * 0.35, r * 0.5, r * 0.22, 0.2, 0, TAU); c.fillStyle = 'rgba(92,128,52,0.75)'; c.fill();
+  }
   c.restore();
 }
 
@@ -2446,9 +2523,18 @@ function drawTree(c, x, y, r, v) {
     const a = rng() * TAU, d = r * 0.42 * rng();
     blobs.push([x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.45 + rng() * 0.3)]);
   }
-  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx + 2, by + 3, br, 0, TAU); c.fillStyle = GROUND.treeDark; c.fill(); }
-  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx, by, br * 0.94, 0, TAU); c.fillStyle = GROUND.tree; c.fill(); }
-  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx - br * 0.25, by - br * 0.28, br * 0.5, 0, TAU); c.fillStyle = GROUND.treeLight; c.fill(); }
+  const bloom = v % 1 < 0.12;
+  const dark = bloom ? '#6b3a4f' : GROUND.treeDark, mid = bloom ? '#c76f8f' : GROUND.tree, light = bloom ? '#f2a9c2' : GROUND.treeLight;
+  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx + 2, by + 3, br, 0, TAU); c.fillStyle = dark; c.fill(); }
+  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx, by, br * 0.94, 0, TAU); c.fillStyle = mid; c.fill(); }
+  for (const [bx, by, br] of blobs) { c.beginPath(); c.arc(bx - br * 0.25, by - br * 0.28, br * 0.5, 0, TAU); c.fillStyle = light; c.fill(); }
+  c.fillStyle = bloom ? 'rgba(255,230,240,0.8)' : 'rgba(150,190,90,0.5)';
+  for (let i = 0; i < 14; i++) {
+    const a = rng() * TAU, d = r * 0.75 * Math.sqrt(rng());
+    c.beginPath(); c.arc(x + Math.cos(a) * d - r * 0.1, y + Math.sin(a) * d - r * 0.15, 1.2 + rng() * 1.6, 0, TAU); c.fill();
+  }
+  c.beginPath(); c.arc(x - r * 0.05, y - r * 0.05, r * 0.92, Math.PI * 1.05, Math.PI * 1.55);
+  c.strokeStyle = bloom ? 'rgba(255,220,235,0.5)' : 'rgba(190,220,120,0.35)'; c.lineWidth = 3; c.stroke();
 }
 
 function drawGround(c, L, T, R, B) {
@@ -2473,7 +2559,32 @@ function drawGround(c, L, T, R, B) {
 const SPRITES = {};
 function makeCanvas(size) { const cv = document.createElement('canvas'); cv.width = cv.height = size; return cv; }
 
+function buildGrain(size) {
+  const cv = makeCanvas(size), c = cv.getContext('2d'), img = c.createImageData(size, size);
+  const rng = mulberry32(1234);
+  const lattice = (n) => { const a = new Float32Array(n * n); for (let i = 0; i < a.length; i++) a[i] = rng(); return a; };
+  const octaves = [[8, lattice(8), 0.5], [32, lattice(32), 0.3]];
+  const smooth = (t) => t * t * (3 - 2 * t);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let v = 0;
+      for (const [n, L, w] of octaves) {
+        const fx = x / size * n, fy = y / size * n, ix = Math.floor(fx), iy = Math.floor(fy);
+        const tx = smooth(fx - ix), ty = smooth(fy - iy), x1 = (ix + 1) % n, y1 = (iy + 1) % n;
+        const a = L[iy * n + ix], b = L[iy * n + x1], cc = L[y1 * n + ix], d = L[y1 * n + x1];
+        v += w * ((a + (b - a) * tx) + ((cc + (d - cc) * tx) - (a + (b - a) * tx)) * ty);
+      }
+      v += 0.2 * rng();
+      const g = clamp(Math.round(128 + (v - 0.5) * 120), 0, 255), i = (y * size + x) * 4;
+      img.data[i] = g; img.data[i + 1] = g; img.data[i + 2] = g; img.data[i + 3] = 255;
+    }
+  }
+  c.putImageData(img, 0, 0);
+  return cv;
+}
+
 function buildSprites() {
+  SPRITES.grain = buildGrain(256);
   const gemDefs = [['#59b4ff', '#bfe4ff', '#2a5f9e', 6.5], ['#6dff9a', '#d4ffe0', '#1f8a48', 8], ['#c77dff', '#f0d9ff', '#6a2aa8', 10]];
   SPRITES.gems = gemDefs.map(([col, light, dark, sz]) => {
     const S = 3, cv = makeCanvas(40 * S), c = cv.getContext('2d');
@@ -2499,6 +2610,9 @@ function buildSprites() {
   };
   SPRITES.glowGold = glow('#ffd166', 128);
   SPRITES.glowMint = glow('#8ff5d8', 128);
+  SPRITES.glowSteel = glow('#8fd4ff', 128);
+  SPRITES.glowWarm = glow('#ffb35c', 128);
+  SPRITES.glowFirefly = glow('#e8ff9a', 32);
   SPRITES.glowPink = glow('#ff6fb1', 64);
   SPRITES.glowViolet = glow('#b06bff', 64);
   SPRITES.glowRed = glow('#ff3b3b', 128);
@@ -2550,24 +2664,25 @@ function drawMedallionShape(c, r, evo) {
   c.lineWidth = Math.max(1, r * 0.12); c.strokeStyle = '#6b4610'; c.stroke();
   c.beginPath(); c.arc(0, 0, r * 0.68, 0, TAU); c.fillStyle = evo ? '#f4fffb' : '#1d7a82'; c.fill();
   c.lineWidth = Math.max(0.8, r * 0.07); c.strokeStyle = 'rgba(60,40,10,0.5)'; c.stroke();
-  const a = r * 0.15, b = r * 0.46;
-  c.fillStyle = evo ? '#e8384f' : '#ffffff';
-  c.fillRect(-a, -b, a * 2, b * 2); c.fillRect(-b, -a, b * 2, a * 2);
+  shurikenPath(c, 0, 0, r * 0.52, r * 0.16);
+  c.fillStyle = evo ? '#e8384f' : '#ffffff'; c.fill();
   c.beginPath(); c.arc(-r * 0.32, -r * 0.4, r * 0.22, 0, TAU); c.fillStyle = 'rgba(255,255,255,0.55)'; c.fill();
 }
 
-// ---------- Hero: Navos Ninja ----------
+// ---------- Hero: Navos Ninja (khaki scrubs, katana) ----------
 const HERO_PAL = {
-  skin: '#b8774a', skinLight: '#d99a6a', skinDark: '#8a522c',
-  scrub: '#c9b48b', scrubLight: '#e2d2aa', scrubDark: '#a08a62', scrubDeep: '#7a6748',
-  pants: '#bea980', pantsDark: '#958158',
-  hair: '#1d1612', hairLight: '#4a382c', shoe: '#24201d', sole: '#d9d2c4',
-  outline: '#2a1f17', band: '#17808a', bandLight: '#46c2c9', steth: '#39414a', metal: '#dfe7ec',
-  eye: '#1a120d', mouth: '#5a2a1c', pen: '#2f6fe0',
+  skin: '#b8774a', skinLight: '#dea374', skinDark: '#8a522c',
+  scrub: '#c9b48b', scrubLight: '#e6d7b0', scrubDark: '#9f8961', scrubDeep: '#776445',
+  pants: '#bea980', pantsDark: '#927e57',
+  hair: '#19130f', hairLight: '#54402f', shoe: '#221e1b', sole: '#d9d2c4',
+  outline: '#261c15', band: '#17808a', bandLight: '#56d6dc',
+  eye: '#1a120d', mouth: '#5a2a1c', rim: 'rgba(255,236,200,0.55)',
+  steel: '#eef4f8', steelDark: '#8798a6', tsuka: '#1d1a1f', wrap: '#6a5a86', tsuba: '#d6a03c',
+  saya: '#2b1b14', sayaLight: '#6b4632',
 };
 const HERO_FLASH = {};
 for (const k in HERO_PAL) HERO_FLASH[k] = '#ffffff';
-HERO_FLASH.outline = '#ffcfcf'; HERO_FLASH.eye = '#ffb0b0'; HERO_FLASH.mouth = '#ffb0b0';
+HERO_FLASH.outline = '#ffcfcf'; HERO_FLASH.eye = '#ffb0b0'; HERO_FLASH.mouth = '#ffb0b0'; HERO_FLASH.rim = 'rgba(255,255,255,0)';
 
 const HERO_SCALE = 1.08;
 
@@ -2581,7 +2696,7 @@ function heroArm(c, P, sx, sy, hx, hy, front) {
   limb(c, sx, sy, hx, hy, 4.6, front ? P.skin : P.skinDark, P.outline);
   const mx = sx + (hx - sx) * 0.45, my = sy + (hy - sy) * 0.45;
   limb(c, sx, sy, mx, my, 7, front ? P.scrub : P.scrubDark, P.outline);
-  c.beginPath(); c.arc(hx, hy, 3, 0, TAU); c.fillStyle = front ? P.skin : P.skinDark; c.fill();
+  c.beginPath(); c.arc(hx, hy, 3.1, 0, TAU); c.fillStyle = front ? P.skin : P.skinDark; c.fill();
   c.lineWidth = 1.5; c.strokeStyle = P.outline; c.stroke();
 }
 
@@ -2591,9 +2706,52 @@ function heroShoe(c, P, x, y) {
   c.beginPath(); c.moveTo(x - 2.8, y + 2); c.lineTo(x + 6, y + 2); c.strokeStyle = P.sole; c.lineWidth = 1; c.stroke();
 }
 
+/** A katana held at (hx, hy) pointing along angle a (local space). */
+function drawKatana(c, P, hx, hy, a, len, evo, t, flash) {
+  c.save();
+  c.translate(hx, hy);
+  c.rotate(a);
+  c.lineCap = 'round';
+  if (evo && !flash) {
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha = 0.55 + Math.sin(t * 9) * 0.15;
+    c.drawImage(SPRITES.glowGold, len * 0.15, -9, len * 0.95, 18);
+    c.restore();
+  }
+  // Grip with cord wrap, then the guard.
+  c.beginPath(); c.moveTo(-9.5, 0); c.lineTo(1, 0);
+  c.strokeStyle = P.outline; c.lineWidth = 4.6; c.stroke();
+  c.strokeStyle = P.tsuka; c.lineWidth = 3; c.stroke();
+  c.fillStyle = P.wrap;
+  for (let i = -8.2; i < -0.5; i += 2.3) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + 0.9, -1.3); c.lineTo(i + 1.8, 0); c.lineTo(i + 0.9, 1.3); c.closePath(); c.fill(); }
+  c.beginPath(); c.ellipse(1.7, 0, 1.4, 3.6, 0, 0, TAU);
+  c.fillStyle = P.tsuba; c.fill(); c.lineWidth = 1; c.strokeStyle = P.outline; c.stroke();
+  // Gently curved blade: spine on top, cutting edge underneath.
+  c.beginPath();
+  c.moveTo(2.8, -1.8);
+  c.quadraticCurveTo(len * 0.5, -3.3, len - 3.6, -3.1);
+  c.lineTo(len, -1.9);
+  c.quadraticCurveTo(len * 0.55, 1.1, 2.8, 1.7);
+  c.closePath();
+  if (flash) c.fillStyle = P.steel;
+  else {
+    const bg = c.createLinearGradient(0, -3.1, 0, 1.7);
+    bg.addColorStop(0, P.steelDark); bg.addColorStop(0.55, P.steel); bg.addColorStop(1, '#ffffff');
+    c.fillStyle = bg;
+  }
+  c.fill(); c.lineWidth = 1; c.strokeStyle = P.outline; c.stroke();
+  c.beginPath(); c.moveTo(4.5, 0.55); c.quadraticCurveTo(len * 0.55, 0.05, len - 2.4, -1.5);
+  c.strokeStyle = evo ? '#ffe28a' : 'rgba(255,255,255,0.95)'; c.lineWidth = 0.8; c.stroke();
+  // A glint that travels along the blade now and then.
+  const u = (t * 0.55) % 1.8;
+  if (u < 1 && !flash) star4(c, 5 + u * (len - 8), -0.6, 2.6 + Math.sin(u * Math.PI) * 1.6, '#ffffff');
+  c.restore();
+}
+
 /**
  * Draws the hero with feet at (x, y). Pure function of `o`:
- * { t, move, phase, facing, back, flash, alpha, death, hurt }.
+ * { t, move, phase, facing, back, flash, alpha, death, hurt, swing (world angle or null), evo }.
  */
 function drawHero(c, x, y, o) {
   const P = o.flash ? HERO_FLASH : HERO_PAL;
@@ -2620,17 +2778,31 @@ function drawHero(c, x, y, o) {
   const lift = (v) => Math.max(0, v) * 4 * mv;
   const fAx = 3 + sw * 7 * mv, fAy = -2 - lift(cw);
   const fBx = -3 - sw * 7 * mv, fBy = -2 - lift(-cw);
+  const swinging = o.swing !== null && o.swing !== undefined && !o.death;
+  // World swing angle -> local angle (the x axis is mirrored when facing left).
+  const swingA = swinging ? Math.atan2(Math.sin(o.swing), Math.cos(o.swing) * o.facing) : 0;
+
+  // Scabbard slung across the back (drawn behind everything when facing the camera).
+  const drawSaya = () => {
+    c.beginPath(); c.moveTo(-12.5, hipY + 6); c.lineTo(10.5, shY - 9);
+    c.strokeStyle = P.outline; c.lineWidth = 5.6; c.stroke();
+    c.strokeStyle = P.saya; c.lineWidth = 3.4; c.stroke();
+    c.beginPath(); c.moveTo(-9.5, hipY + 3.5); c.lineTo(8.5, shY - 7.2); c.strokeStyle = P.sayaLight; c.lineWidth = 0.9; c.stroke();
+    c.beginPath(); c.arc(-12.5, hipY + 6, 2.2, 0, TAU); c.fillStyle = P.tsuba; c.fill();
+  };
+  if (!o.back) drawSaya();
 
   // Legs (khaki scrub trousers) and dark shoes.
   limb(c, -3, hipY, fBx, fBy, 7, P.pantsDark, P.outline);
   heroShoe(c, P, fBx, fBy);
   limb(c, 3, hipY, fAx, fAy, 7, P.pants, P.outline);
   heroShoe(c, P, fAx, fAy);
+  c.beginPath(); c.moveTo(4.2, hipY + 2); c.lineTo(fAx + 1.2, fAy - 5); c.strokeStyle = 'rgba(255,245,220,0.35)'; c.lineWidth = 1.2; c.stroke();
 
   // Far arm, behind the torso.
   heroArm(c, P, -8.5, shY + 3, -10 + sw * 5 * mv, shY + 17, false);
 
-  // Torso: khaki scrub top.
+  // Torso: plain khaki scrub top.
   c.beginPath();
   c.moveTo(-10, shY + 2);
   c.quadraticCurveTo(-11, shY - 1.5, -6, shY - 1.8);
@@ -2647,34 +2819,41 @@ function drawHero(c, x, y, o) {
   }
   c.fill();
   c.lineWidth = 2; c.strokeStyle = P.outline; c.stroke();
-
-  // Fold lines and hem.
+  // Form shadow down the far side, fold lines and hem.
+  c.beginPath();
+  c.moveTo(-10, shY + 2); c.quadraticCurveTo(-11.3, (shY + hipY) / 2, -11.4, hipY + 2.4);
+  c.lineTo(-7.2, hipY + 3.6); c.quadraticCurveTo(-8, (shY + hipY) / 2, -6.5, shY + 0.5); c.closePath();
+  c.fillStyle = 'rgba(80,60,38,0.26)'; c.fill();
   c.lineWidth = 1; c.strokeStyle = 'rgba(70,52,34,0.45)';
   c.beginPath();
   c.moveTo(-10.6, hipY - 1); c.quadraticCurveTo(0, hipY + 1.5, 10.6, hipY - 1);
   c.moveTo(-6, hipY - 7); c.quadraticCurveTo(-3, hipY - 4.5, -1, hipY - 6.2);
   c.moveTo(4, hipY - 9); c.quadraticCurveTo(6, hipY - 6, 8.2, hipY - 7);
   c.stroke();
-  c.beginPath(); c.moveTo(-9.5, shY + 2.5); c.quadraticCurveTo(-10, shY + 10, -8.6, hipY);
-  c.strokeStyle = 'rgba(255,248,225,0.35)'; c.lineWidth = 1.4; c.stroke();
+  c.beginPath(); c.moveTo(6, shY - 1.2); c.quadraticCurveTo(10.2, shY - 0.6, 10.4, shY + 4);
+  c.strokeStyle = P.rim; c.lineWidth = 1.4; c.stroke();
 
   if (!o.back) {
-    // V-neck, pocket with pen, stethoscope.
+    // V-neck and chest pocket: just scrubs.
     c.beginPath(); c.moveTo(-3.8, shY - 1.2); c.lineTo(0.5, shY + 5.6); c.lineTo(4.8, shY - 1.2); c.closePath();
     c.fillStyle = P.skinDark; c.fill(); c.lineWidth = 1.2; c.strokeStyle = P.scrubDeep; c.stroke();
     c.lineWidth = 1.1; c.strokeStyle = P.scrubDeep; c.strokeRect(2.8, shY + 8.5, 5.4, 4.6);
-    c.beginPath(); c.moveTo(4.2, shY + 6.8); c.lineTo(4.2, shY + 9.4); c.strokeStyle = P.pen; c.lineWidth = 1.5; c.stroke();
-    c.strokeStyle = P.steth; c.lineWidth = 1.7;
-    c.beginPath(); c.moveTo(-4.8, shY - 0.6); c.quadraticCurveTo(-7.4, shY + 8, -2.6, shY + 11.6); c.stroke();
-    c.beginPath(); c.moveTo(5.4, shY - 0.6); c.quadraticCurveTo(6.8, shY + 4, 4.6, shY + 6.2); c.stroke();
-    c.beginPath(); c.arc(-2.2, shY + 12.6, 2.1, 0, TAU); c.fillStyle = P.metal; c.fill(); c.lineWidth = 1; c.strokeStyle = P.steth; c.stroke();
   } else {
-    c.beginPath(); c.moveTo(-7, shY - 0.5); c.quadraticCurveTo(0, shY + 3, 7, shY - 0.5);
-    c.strokeStyle = P.steth; c.lineWidth = 1.7; c.stroke();
+    c.beginPath(); c.moveTo(-6, shY - 0.6); c.quadraticCurveTo(0, shY + 1.6, 6, shY - 0.6);
+    c.strokeStyle = P.scrubDeep; c.lineWidth = 1.2; c.stroke();
+    drawSaya();
   }
 
-  // Near arm, in front of the torso.
-  heroArm(c, P, 8.5, shY + 3, 10 - sw * 5 * mv, shY + 17, true);
+  // Near arm with the katana: a ready stance, or extended through a swing.
+  if (swinging) {
+    const hx = 8.5 + Math.cos(swingA) * 13, hy = shY + 3 + Math.sin(swingA) * 13;
+    heroArm(c, P, 8.5, shY + 3, hx, hy, true);
+    drawKatana(c, P, hx, hy, swingA, 40, o.evo, t, o.flash);
+  } else {
+    const hx = 10 - sw * 5 * mv, hy = shY + 17;
+    drawKatana(c, P, hx, hy, 0.78 + mv * 0.3 + breathe * 0.03, 32, o.evo, t, o.flash);
+    heroArm(c, P, 8.5, shY + 3, hx, hy, true);
+  }
 
   // Neck and headband tails (behind the head).
   c.fillStyle = P.skinDark; c.fillRect(-2.6, headY + 7, 5.2, 5);
@@ -2688,6 +2867,14 @@ function drawHero(c, x, y, o) {
     c.strokeStyle = P.outline; c.lineWidth = 4.6; c.stroke();
     c.strokeStyle = P.band; c.lineWidth = 2.8; c.stroke();
   }
+
+  // Spiky crown of dark hair (behind the head outline).
+  c.beginPath();
+  c.moveTo(-8.5, headY - 6); c.lineTo(-13.2, headY - 11); c.lineTo(-6.2, headY - 11.2);
+  c.lineTo(-6, headY - 16.6); c.lineTo(-0.6, headY - 13.2);
+  c.lineTo(3.4, headY - 17.2); c.lineTo(5.6, headY - 12.4);
+  c.lineTo(10.6, headY - 13.4); c.lineTo(9.4, headY - 7.5); c.closePath();
+  c.fillStyle = P.hair; c.fill(); c.lineWidth = 1.6; c.strokeStyle = P.outline; c.stroke();
 
   // Head.
   c.beginPath(); c.ellipse(0.5, headY, 10, 10.5, 0, 0, TAU);
@@ -2714,23 +2901,24 @@ function drawHero(c, x, y, o) {
     c.fillStyle = P.hair; c.fill(); c.lineWidth = 1.6; c.strokeStyle = P.outline; c.stroke();
     c.beginPath(); c.moveTo(-5, headY - 9.6); c.quadraticCurveTo(0, headY - 12.4, 5, headY - 10.6);
     c.strokeStyle = P.hairLight; c.lineWidth = 1.6; c.stroke();
-    // Headband with a tiny medical cross.
+    // Headband.
     c.beginPath(); c.moveTo(-10.2, headY - 2.4); c.quadraticCurveTo(0, headY - 8.6, 10.7, headY - 3.9);
     c.strokeStyle = P.outline; c.lineWidth = 5; c.stroke();
     c.strokeStyle = P.band; c.lineWidth = 3.2; c.stroke();
     c.beginPath(); c.moveTo(-6, headY - 5.6); c.quadraticCurveTo(0, headY - 8.9, 6, headY - 6.4); c.strokeStyle = P.bandLight; c.lineWidth = 0.9; c.stroke();
-    c.fillStyle = '#ffffff'; c.fillRect(5, headY - 7.6, 2.2, 0.8); c.fillRect(5.7, headY - 8.3, 0.8, 2.2);
-    // Face.
+    // Face: focused eyes, firm brows, small confident smile.
     const blink = (t % 4.3) < 0.12 ? 0.22 : 1;
     for (const ex of [2.7, 7.6]) {
       c.beginPath(); c.ellipse(ex, headY + 0.6, 1.45, 2.1 * blink, 0, 0, TAU); c.fillStyle = P.eye; c.fill();
       if (blink > 0.5) { c.beginPath(); c.arc(ex + 0.45, headY - 0.2, 0.6, 0, TAU); c.fillStyle = '#ffffff'; c.fill(); }
     }
-    c.beginPath(); c.moveTo(0.8, headY - 3.1); c.lineTo(4.2, headY - 3.9); c.moveTo(6.3, headY - 3.9); c.lineTo(9.2, headY - 3.0);
-    c.strokeStyle = P.hair; c.lineWidth = 1.5; c.stroke();
+    c.beginPath(); c.moveTo(0.6, headY - 2.9); c.lineTo(4.3, headY - 3.9); c.moveTo(6.2, headY - 4.0); c.lineTo(9.4, headY - 3.1);
+    c.strokeStyle = P.hair; c.lineWidth = 1.7; c.stroke();
     c.beginPath(); c.moveTo(10, headY + 0.8); c.quadraticCurveTo(11.6, headY + 3.2, 9.6, headY + 3.6);
     c.strokeStyle = P.skinDark; c.lineWidth = 1.2; c.stroke();
     c.beginPath(); c.arc(5.6, headY + 4.4, 2.6, 0.3, Math.PI - 0.55); c.strokeStyle = P.mouth; c.lineWidth = 1.3; c.stroke();
+    // Warm rim light on the lit side of the face.
+    c.beginPath(); c.arc(0.5, headY, 9.1, -0.9, 0.35); c.strokeStyle = P.rim; c.lineWidth = 1.3; c.stroke();
   } else {
     // Back of the head: hair, band and knot.
     c.beginPath(); c.ellipse(0.5, headY - 0.6, 10.2, 10.1, 0, Math.PI * 0.92, Math.PI * 2.08);
@@ -2926,6 +3114,14 @@ function drawMonsterVector(c, e, t, lod, lx, ly, sprite) {
     drawMonsterEye(c, r * 0.4, by - r * 0.36, r * 0.25, lx, ly, wob + 2.1, pal, -angry, dizzy, t, sprite);
   }
 
+  // Glossy highlight and rosy cheeks.
+  if (!flash) {
+    c.beginPath(); c.ellipse(-r * 0.8, by - r * 0.05, r * 0.09, r * 0.2, 0.35, 0, TAU);
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.fill();
+    c.beginPath(); c.ellipse(-r * 0.66, by + r * 0.2, r * 0.15, r * 0.08, 0, 0, TAU); c.ellipse(r * 0.66, by + r * 0.2, r * 0.15, r * 0.08, 0, 0, TAU);
+    c.fillStyle = 'rgba(255,120,150,0.4)'; c.fill();
+  }
+
   // Wide grin with teeth and tongue.
   const mw = r * (isBoss ? 0.7 : 0.6), my = by + r * 0.06, md = r * (isBoss ? 0.7 : 0.58);
   c.beginPath();
@@ -2960,7 +3156,7 @@ function drawMonsterVector(c, e, t, lod, lx, ly, sprite) {
 
 // ---------- World passes ----------
 const drawList = [];
-const heroOpts = { t: 0, move: 0, phase: 0, facing: 1, back: false, flash: false, alpha: 1, death: 0, hurt: 0 };
+const heroOpts = { t: 0, move: 0, phase: 0, facing: 1, back: false, flash: false, alpha: 1, death: 0, hurt: 0, swing: null, evo: false };
 const ghostOpts = { t: 0, move: 1, phase: 0, facing: 1, back: false, flash: true, alpha: 1, death: 0, hurt: 0 };
 
 function render() {
@@ -2991,6 +3187,7 @@ function renderWorld() {
   const L = camX - hw, T = camY - hh, R = camX + hw, B = camY + hh;
 
   drawGround(c, L, T, R, B);                    // 1-3. background, terrain, decoration
+  drawLanternLight(c, g.animT, L, T, R, B);
   drawDecals(c);                                // telegraphs and hero light on the ground
 
   drawList.length = 0;
@@ -3020,10 +3217,45 @@ function renderWorld() {
   c.globalCompositeOperation = 'lighter';
   drawParticles(c, true);
   c.globalCompositeOperation = 'source-over';
+  drawFireflies(c, g.animT, L, T, R, B);
   drawTelegraphOutlines(c);
   drawTexts(c);
   c.restore();
   drawScreenOverlays(c);
+}
+
+function drawLanternLight(c, t, L, T, R, B) {
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < LANTERNS.length; i++) {
+    const l = LANTERNS[i];
+    if (l.x < L - 200 || l.x > R + 200 || l.y < T - 200 || l.y > B + 200) continue;
+    const f = 0.85 + Math.sin(t * 11 + i * 2.1) * 0.08 + Math.sin(t * 23 + i) * 0.05;
+    c.globalAlpha = 0.32 * f;
+    c.drawImage(SPRITES.glowWarm, l.x - 110, l.y - 70, 220, 150);
+    c.globalAlpha = 0.85 * f;
+    c.drawImage(SPRITES.glowWarm, l.x - 22, l.y - 58, 44, 44);
+  }
+  c.restore();
+}
+
+/** Ambient fireflies, world-anchored and purely decorative (derived from time). */
+function drawFireflies(c, t, L, T, R, B) {
+  const PX = Math.max(1600, R - L + 120), PY = Math.max(1000, B - T + 120);
+  const n = Math.min(64, Math.round(30 * (PX * PY) / 1.6e6));
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const h = hashInt(i, 4242), bx = (h & 0xffff) / 65536, by = (h >>> 16) / 65536;
+    const X = bx * PX + Math.sin(t * 0.37 + i * 1.7) * 46 + t * 7, Y = by * PY + Math.cos(t * 0.29 + i) * 34 - t * 5;
+    const x = L - 60 + ((((X - (L - 60)) % PX) + PX) % PX), y = T - 60 + ((((Y - (T - 60)) % PY) + PY) % PY);
+    const tw = 0.5 + 0.5 * Math.sin(t * (1.6 + (i % 5) * 0.3) + i * 2.3);
+    if (tw < 0.15) continue;
+    const sz = 9 + (i % 4) * 2.5;
+    c.globalAlpha = 0.65 * tw;
+    c.drawImage(SPRITES.glowFirefly, x - sz / 2, y - sz / 2, sz, sz);
+  }
+  c.restore();
 }
 
 function drawDecals(c) {
@@ -3109,23 +3341,26 @@ function drawTelegraphOutlines(c) {
 }
 
 function drawShadows(c, list) {
-  const p = G.player;
-  c.fillStyle = 'rgba(26,16,6,0.3)';
-  c.beginPath();
-  for (const e of list) {
-    const rx = e.r * 1.1, ry = e.r * 0.42;
-    c.moveTo(e.x + rx, e.y); c.ellipse(e.x, e.y, rx, ry, 0, 0, TAU);
-  }
-  if (!p.dead || p.deathT < 1.6) { c.moveTo(p.x + 15, p.y); c.ellipse(p.x, p.y, 15, 5.5, 0, 0, TAU); }
-  const med = getWeapon('medallion');
-  if (med && med.s && !p.dead) {
-    const n = med.s.count;
-    for (let i = 0; i < n; i++) {
-      const a = med.angle + (i / n) * TAU, x = p.x + Math.cos(a) * med.s.orbit, y = p.y + Math.sin(a) * med.s.orbit;
-      c.moveTo(x + med.s.size * 0.8, y); c.ellipse(x, y, med.s.size * 0.8, med.s.size * 0.3, 0, 0, TAU);
+  const p = G.player, med = getWeapon('medallion');
+  // Two batched passes: a wide soft penumbra, then a tighter contact core.
+  for (let pass = 0; pass < 2; pass++) {
+    const k = pass ? 0.82 : 1.3;
+    c.fillStyle = pass ? 'rgba(24,14,4,0.24)' : 'rgba(24,14,4,0.13)';
+    c.beginPath();
+    for (const e of list) {
+      const rx = e.r * 1.1 * k, ry = e.r * 0.42 * k;
+      c.moveTo(e.x + rx, e.y); c.ellipse(e.x, e.y, rx, ry, 0, 0, TAU);
     }
+    if (!p.dead || p.deathT < 1.6) { c.moveTo(p.x + 16 * k, p.y); c.ellipse(p.x, p.y, 16 * k, 6 * k, 0, 0, TAU); }
+    if (med && med.s && !p.dead) {
+      const n = med.s.count;
+      for (let i = 0; i < n; i++) {
+        const a = med.angle + (i / n) * TAU, x = p.x + Math.cos(a) * med.s.orbit, y = p.y + Math.sin(a) * med.s.orbit;
+        c.moveTo(x + med.s.size * 0.8 * k, y); c.ellipse(x, y, med.s.size * 0.8 * k, med.s.size * 0.3 * k, 0, 0, TAU);
+      }
+    }
+    c.fill();
   }
-  c.fill();
 }
 
 function drawGems(c, L, T, R, B) {
@@ -3155,6 +3390,14 @@ function drawPlayer(c) {
   heroOpts.t = G.animT; heroOpts.move = p.dead ? 0 : p.move; heroOpts.phase = p.phase; heroOpts.facing = p.facing;
   heroOpts.back = p.back && !p.dead; heroOpts.flash = p.hurt > 0.12; heroOpts.alpha = alpha;
   heroOpts.death = p.dead ? p.deathT : 0; heroOpts.hurt = Math.max(0, p.hurt);
+  const strikeW = G.weapons[0];
+  heroOpts.evo = !!(strikeW && strikeW.id === 'strike' && strikeW.evolved);
+  heroOpts.swing = null;
+  const st = G.strikes.length ? G.strikes[G.strikes.length - 1] : null;
+  if (st && !p.dead && st.t < st.life) {
+    heroOpts.swing = slashHead(st.ang, st.arc, st.flip, st.t / st.life);
+    heroOpts.facing = Math.cos(st.ang) >= 0 ? 1 : -1;
+  }
   if (alpha > 0) drawHero(c, p.x, p.y, heroOpts);
   if (!p.dead) {
     const w = 36, x = p.x - w / 2, y = p.y + 9;
@@ -3171,38 +3414,49 @@ function drawBossWorldBar(c, e) {
   c.fillRect(x, y, w * clamp(e.hp / e.maxHp, 0, 1), 5);
 }
 
+function slashHead(ang, arc, flip, prog) {
+  const a0 = ang - arc / 2, a1 = ang + arc / 2, start = flip ? a1 : a0, end = flip ? a0 : a1;
+  return start + (end - start) * easeOutCubic(Math.min(1, prog / 0.55));
+}
+
+/** A crescent sword trail: soft outer glow, bright body, white-hot core, sparkles at the tip. */
+function drawSlash(c, cx, cy, ang, arc, R, flip, prog, evo) {
+  const a0 = ang - arc / 2, a1 = ang + arc / 2, start = flip ? a1 : a0;
+  const head = slashHead(ang, arc, flip, prog), span = head - start, N = 18;
+  const fade = 1 - Math.max(0, (prog - 0.3) / 0.7);
+  const layers = evo
+    ? [[0.62, '#ff9f2e', 0.32], [0.36, '#ffd166', 0.62], [0.12, '#ffffff', 0.95]]
+    : [[0.56, '#3f9dff', 0.3], [0.32, '#9fe4ff', 0.6], [0.1, '#ffffff', 0.95]];
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  for (const [tk, col, al] of layers) {
+    const thick = R * tk;
+    c.beginPath();
+    for (let k = 0; k <= N; k++) { const a = start + span * (k / N); const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; if (k) c.lineTo(x, y); else c.moveTo(x, y); }
+    for (let k = N; k >= 0; k--) {
+      const u = k / N, a = start + span * u, rr = R - thick * Math.pow(u, 1.5) - 1;
+      c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    c.closePath();
+    c.globalAlpha = fade * al;
+    c.fillStyle = col;
+    c.fill();
+  }
+  if (prog < 0.55) {
+    const k = 1 - prog / 0.55, hx = cx + Math.cos(head) * R, hy = cy + Math.sin(head) * R, gs = evo ? 80 : 60;
+    c.globalAlpha = k * 0.9;
+    c.drawImage(evo ? SPRITES.glowGold : SPRITES.glowSteel, hx - gs / 2, hy - gs / 2, gs, gs);
+    for (let i = 0; i < 3; i++) {
+      const a = head - span * (0.12 + i * 0.13), rr = R * (0.92 - i * 0.07);
+      star4(c, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, (6 - i * 1.5) * k + 1, evo ? '#fff3c4' : '#e6f8ff');
+    }
+  }
+  c.restore();
+}
+
 function drawStrikesFx(c) {
   const p = G.player;
-  for (const s of G.strikes) {
-    const prog = s.t / s.life;
-    const sweep = easeOutCubic(Math.min(1, prog / 0.55));
-    const fade = 1 - Math.max(0, (prog - 0.3) / 0.7);
-    const a0 = s.ang - s.arc / 2, a1 = s.ang + s.arc / 2;
-    const start = s.flip ? a1 : a0, end = s.flip ? a0 : a1;
-    const head = start + (end - start) * sweep;
-    const R = s.range, N = 16, cx = p.x, cy = p.y - 14;
-    c.save();
-    c.globalCompositeOperation = 'lighter';
-    for (let pass = 0; pass < 2; pass++) {
-      const thick = pass === 0 ? R * (s.evo ? 0.5 : 0.42) : R * 0.14;
-      c.beginPath();
-      for (let k = 0; k <= N; k++) { const a = start + (head - start) * (k / N); const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R; if (k) c.lineTo(x, y); else c.moveTo(x, y); }
-      for (let k = N; k >= 0; k--) {
-        const u = k / N, a = start + (head - start) * u, rr = R - thick * Math.pow(u, 1.4) - 1;
-        c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-      }
-      c.closePath();
-      c.globalAlpha = fade * (pass === 0 ? 0.55 : 0.95);
-      c.fillStyle = pass === 0 ? (s.evo ? '#ffd166' : '#5fe8c4') : '#ffffff';
-      c.fill();
-    }
-    if (prog < 0.5) {
-      c.globalAlpha = (1 - prog * 2) * 0.8;
-      const hx = cx + Math.cos(head) * R, hy = cy + Math.sin(head) * R, gs = s.evo ? 70 : 50;
-      c.drawImage(s.evo ? SPRITES.glowGold : SPRITES.glowMint, hx - gs / 2, hy - gs / 2, gs, gs);
-    }
-    c.restore();
-  }
+  for (const s of G.strikes) drawSlash(c, p.x, p.y - 22, s.ang, s.arc, s.range, s.flip, s.t / s.life, s.evo);
 }
 
 function drawPulsesFx(c) {
@@ -3361,7 +3615,7 @@ const TITLE_CAST = [
   flash: 0, state: 'chase', seed: ph * 100, phase: 0, boss: false, dirX: 0,
 }));
 const TITLE_GEMS = [[-60, 60, 0], [80, 45, 1], [-200, 30, 0], [120, -60, 0], [230, 120, 2], [-140, -50, 1], [20, 120, 0]];
-const titleHero = { t: 0, move: 0, phase: 0, facing: 1, back: false, flash: false, alpha: 1, death: 0, hurt: 0 };
+const titleHero = { t: 0, move: 0, phase: 0, facing: 1, back: false, flash: false, alpha: 1, death: 0, hurt: 0, swing: null, evo: false };
 
 function renderTitle() {
   const c = ctx, t = realTime, z = view.zoom * CONFIG.TITLE_ZOOM;
@@ -3375,6 +3629,7 @@ function renderTitle() {
   c.translate(-camX, -camY);
   const L = camX - view.w / 2 / z, R = camX + view.w / 2 / z, T = camY - anchorY / z, B = camY + (view.h - anchorY) / z;
   drawGround(c, L, T, R, B);
+  drawLanternLight(c, t, L, T, R, B);
 
   for (const m of TITLE_CAST) {
     m.phase = t * 9 + m.ph * 3;
@@ -3407,7 +3662,10 @@ function renderTitle() {
     c.beginPath(); c.arc(0, 0, 40 + k * 170, 0, TAU); c.strokeStyle = '#6fffd2'; c.lineWidth = 3 + 8 * (1 - k); c.stroke();
     c.restore();
   }
+  const sc = (t + 1.1) % 2.6, sProg = sc / 0.24, sAng = titleHero.facing > 0 ? -0.25 : Math.PI + 0.25;
+  titleHero.swing = sProg < 1 ? slashHead(sAng, 2.6, false, sProg) : null;
   drawHero(c, 0, 0, titleHero);
+  if (sProg < 1) drawSlash(c, 0, -22, sAng, 2.6, 125, false, sProg, false);
   for (const m of cast) {
     if (m.y <= 0) continue;
     const d = Math.hypot(m.x, m.y - 30) || 1;
@@ -3419,6 +3677,7 @@ function renderTitle() {
     c.drawImage(SPRITES.glowGold, x - 24, y - 24, 48, 48); c.restore();
     c.save(); c.translate(x, y); c.scale(0.35 + 0.65 * Math.abs(Math.cos(t * 5 + i)), 1); drawMedallionShape(c, 11, false); c.restore();
   }
+  drawFireflies(c, t, L, T, R, B);
   c.restore();
   drawScreenOverlays(c);
 }
